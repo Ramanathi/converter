@@ -8,6 +8,7 @@ import numpy as np
 from numpy import linalg as LA
 import time
 import urllib.parse as urlparse 
+import subprocess
 
 intensity_threshold=10
 num_threshold = 5 #in percentage
@@ -116,16 +117,24 @@ def read_frames(f):
 
     cv2.destroyAllWindows()
 
+def audio(video_id, bitrate="20k"):
+    video = pafy.new(video_id)
+    bestaudio = video.getbestaudio()
+    file_name = bestaudio.title + "." + bestaudio.extension
+    bestaudio.download()
+    subprocess.run(["ffmpeg", "-y", "-i", file_name, "-b:a", bitrate, "audio.mp3"])
+    subprocess.run(["rm", file_name])
+
 # Create your views here.
 def index(request):
     if request.method == 'POST':
         form = linkform(request.POST)
         if form.is_valid():
             video_id = get_yt_link(form.cleaned_data.get('link'))
-
-            video = pafy.new(video_id)
-            bestaudio = video.getbestaudio()
-            bestaudio.download()
+            bitrate = str(form.cleaned_data.get('bitrate'))+"k"
+            audio(video_id, bitrate)
+            # bestaudio = video.getbestaudio()
+            # bestaudio.download()
 
             ydl_opts = {}
 
