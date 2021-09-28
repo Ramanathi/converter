@@ -9,6 +9,14 @@ from numpy import linalg as LA
 import time
 import urllib.parse as urlparse 
 import subprocess
+import os
+import shutil
+from os import path
+from shutil import make_archive
+
+
+
+
 
 intensity_threshold=10
 num_threshold = 5 #in percentage
@@ -55,7 +63,7 @@ def save_image(t, s, prev_frame):
     print(t)
     prev_frame = prev_frame[:,:,::-1]
     img = Image.fromarray(prev_frame, 'RGB')
-    img.save(str(freq)+'_'+str(intensity_threshold)+'_'+str(num_threshold)+'_'+'output_'+str(s)+'.png')
+    img.save(str(s)+'.png')
     img.show()
     return t, prev_frame
 
@@ -106,7 +114,7 @@ def read_frames(f):
 
         prev_frame = frame
                     
-        count += freq*fps # i.e.this advances one second
+        count += freq*fps # i.e.this advances freq seconds
         cap.set(1, count)
 
         if cv2.waitKey(30)&0xFF == ord('q'):
@@ -114,6 +122,21 @@ def read_frames(f):
 
     # release VideoCapture
     cap.release()
+
+    # creating pdf
+    conv = ["convert"]
+    rm = ["rm"]
+    for s in t:
+        conv.append(str(s)+".png")
+        rm.append(str(s)+".png")
+    conv.append("output.pdf")
+
+    subprocess.run(conv)
+    subprocess.run(rm)
+
+    # creating zip
+    root_dir = os.getcwd()
+    shutil.make_archive("output.pdf","zip",root_dir)
 
     cv2.destroyAllWindows()
 
