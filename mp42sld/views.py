@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 from numpy import linalg as LA
 import time
+import urllib.parse as urlparse 
 
 intensity_threshold=10
 num_threshold = 5 #in percentage
@@ -33,24 +34,96 @@ def isSameFrame(f,f1,s):
     else:
         return True
 
+def get_yt_link(url):
+    query = urlparse.urlparse(url)
+    if query.hostname == 'youtu.be':
+        return query.path[1:]
+    if query.hostname in ('www.youtube.com', 'youtube.com'):
+        if query.path == '/watch':
+            p = urlparse.parse_qs(query.query)
+            return p['v'][0]
+        if query.path[:7] == '/embed/':
+            return query.path.split('/')[2]
+        if query.path[:3] == '/v/':
+            return query.path.split('/')[2]
+    # fail?
+    return None
 
+def save_image(t, s, prev_frame):
+    t.append(s)
+    print(t)
+    prev_frame = prev_frame[:,:,::-1]
+    img = Image.fromarray(prev_frame, 'RGB')
+    img.save(str(freq)+'_'+str(intensity_threshold)+'_'+str(num_threshold)+'_'+'output_'+str(s)+'.png')
+    img.show()
+    return t, prev_frame
 
+def read_frames(f):
 
+    #get the video url
+    url = f.get('url',None)
 
+    # open url with opencv
+    cap = cv2.VideoCapture(url)
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
+    # check if url was opened
+    if not cap.isOpened():
+        print('video not opened')
+        exit(-1)
 
+    remove = True
+    prev_frame = []
+    s=-freq
+    t=[]
+    count=0
 
+    while True:
+        # read frame
+        ret, frame = cap.read()
+        s+=freq
 
+        # check if frame is empty
+        if not ret:
+            t, prev_frame = save_image(t, s, prev_frame)
+            break
+
+        # display frame
+        cv2.imshow('frame', frame)
+
+        if remove:
+            print(frame.shape)
+            remove = False
+        
+        if s==0:
+            prev_frame = frame
+
+        isSF = isSameFrame(frame,prev_frame,s)
+
+        if not isSF:
+            t, prev_frame = save_image(t, s, prev_frame)
+
+        prev_frame = frame
+                    
+        count += freq*fps # i.e.this advances one second
+        cap.set(1, count)
+
+        if cv2.waitKey(30)&0xFF == ord('q'):
+            break
+
+    # release VideoCapture
+    cap.release()
+
+    cv2.destroyAllWindows()
 
 # Create your views here.
 def index(request):
     if request.method == 'POST':
         form = linkform(request.POST)
         if form.is_valid():
-            video_url = form.cleaned_data.get('link')
-            
-            # print("video",video_url)
-            video = pafy.new(video_url)
+            video_id = get_yt_link(form.cleaned_data.get('link'))
+
+            video = pafy.new(video_id)
             bestaudio = video.getbestaudio()
             bestaudio.download()
 
@@ -60,93 +133,20 @@ def index(request):
             ydl = youtube_dl.YoutubeDL(ydl_opts)
 
             # set video url, extract video information
-            info_dict = ydl.extract_info(video_url, download=False)
+            info_dict = ydl.extract_info(video_id, download=False)
 
             # get video formats available
             formats = info_dict.get('formats',None)
-            # print("a")
+
+            max_px = '000p'
             for f in formats:
-                # print(f)
-                # print(f.get('format_note',None))
-                # I want the lowest resolution, so I set resolution as 144p
-                if f.get('format_note',None) == '360p':
-
-                    #get the video url
-                    url = f.get('url',None)
-
-                    # print("this",url)
-                    # open url with opencv
-                    cap = cv2.VideoCapture(url)
-                    fps = cap.get(cv2.CAP_PROP_FPS)
-
-                    # check if url was opened
-                    if not cap.isOpened():
-                        print('video not opened')
-                        exit(-1)
-
-                    remove = True
-                    prev_frame = []
-                    s=-freq
-                    t=[]
-                    count=0
-                    while True:
-                        # read frame
-                        ret, frame = cap.read()
-                        s+=freq
-                        # print(s)
-                        # check if frame is empty
-                        if not ret:
-                            t.append(s)
-                            print(t)
-                            prev_frame = prev_frame[:,:,::-1]
-                            img = Image.fromarray(prev_frame, 'RGB')
-                            img.save(str(freq)+'_'+str(intensity_threshold)+'_'+str(num_threshold)+'_'+'output_'+str(s)+'.png')
-                            img.show()
-                            break
-
-                        # display frame
-                        # print(1)
-                        # t1 = time.time()
-                        cv2.imshow('frame', frame)
-                        # t2 = time.time()
-                        # print("imshow",t2-t1)
-                        if remove:
-                            print(frame.shape)
-                            remove = False
-                        # print(2)
-                        # t = time.time()
-                        if s==0:
-                            prev_frame = frame
-                        # t1 = time.time()
-                        isSF = isSameFrame(frame,prev_frame,s)
-                        # t2 = time.time()
-                        # print("isSameFrame",t2-t1)
-                        if not isSF:
-                            t.append(s)
-                            print(t)
-                            prev_frame = prev_frame[:,:,::-1]
-                            img = Image.fromarray(prev_frame, 'RGB')
-                            img.save(str(freq)+'_'+str(intensity_threshold)+'_'+str(num_threshold)+'_'+'output_'+str(s)+'.png')
-                            img.show()
-                        # tt = time.time()
-                        # print(tt-t)
-
-                        prev_frame = frame
-                    
-                        count += freq*fps # i.e.this advances one second
-                        cap.set(1, count)
-
-
-
-                        if cv2.waitKey(30)&0xFF == ord('q'):
-                            break
-
-                    # release VideoCapture
-                    cap.release()
-
-                    # if multiple cases of same format is there
-                    break
-
-            cv2.destroyAllWindows()
+                px = f.get('format_note',None)
+                if px[0] >= '0' and px[0] <= '9' and px <= '480p':
+                    if px > max_px:
+                        max_px = px
+                        format = f
+            
+            read_frames(format)
+            
     return render(request, 'home.html', {'form': linkform()})
 
