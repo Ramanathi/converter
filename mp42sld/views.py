@@ -5,22 +5,15 @@ import youtube_dl
 import pafy 
 from PIL import Image
 import numpy as np
-from numpy import linalg as LA
-import time
 import urllib.parse as urlparse 
 import subprocess
-import os
-import shutil
-from os import path
-from shutil import make_archive
-
-
-
-
+import json
+from zipfile import ZipFile
 
 intensity_threshold=10
 num_threshold = 5 #in percentage
 freq = 10
+title = ""
 
 remove_this = True
 ##helper functions
@@ -60,11 +53,11 @@ def get_yt_link(url):
 
 def save_image(t, s, prev_frame):
     t.append(s)
-    print(t)
+    # print(t)
     prev_frame = prev_frame[:,:,::-1]
     img = Image.fromarray(prev_frame, 'RGB')
     img.save(str(s)+'.png')
-    img.show()
+    # img.show()
     return t, prev_frame
 
 def read_frames(f):
@@ -86,6 +79,7 @@ def read_frames(f):
     s=-freq
     t=[]
     count=0
+    key_actions = []
 
     while True:
         # read frame
@@ -98,10 +92,10 @@ def read_frames(f):
             break
 
         # display frame
-        cv2.imshow('frame', frame)
+        # cv2.imshow('frame', frame)
 
         if remove:
-            print(frame.shape)
+            shape = frame.shape
             remove = False
         
         if s==0:
@@ -111,6 +105,7 @@ def read_frames(f):
 
         if not isSF:
             t, prev_frame = save_image(t, s, prev_frame)
+            key_actions.append([s, "RIGHT"])
 
         prev_frame = frame
                     
@@ -122,28 +117,51 @@ def read_frames(f):
 
     # release VideoCapture
     cap.release()
+    cv2.destroyAllWindows()
 
     # creating pdf
+    pdf_gen(s, t)
+
+    # keyboard actions
+    with open("keyboard.json", 'w') as f:
+        json.dump(key_actions, f)
+
+    #metadata
+    with open("metadata", 'w') as f:
+        json.dump({"width":shape[0],"height":shape[1]}, f)
+
+    #mouse
+    mouse(s)
+
+def mouse(max_time):
+    mouse_actions = []
+    i = 0
+    while i < max_time:
+        i = i + 0.1
+        mouse_actions.append([i, [0, 0]])
+    with open("mouse.json", 'w') as f:
+        json.dump(mouse_actions, f)
+
+def pdf_gen(s, t):
     conv = ["convert"]
     rm = ["rm"]
     for s in t:
         conv.append(str(s)+".png")
         rm.append(str(s)+".png")
-    conv.append("output.pdf")
+    conv.append("slides.pdf")
 
     subprocess.run(conv)
     subprocess.run(rm)
 
-    # creating zip
-    root_dir = os.getcwd()
-    shutil.make_archive("output.pdf","zip",root_dir)
-
-    cv2.destroyAllWindows()
 
 def audio(video_id, bitrate="20k"):
+
+    global title
+
     video = pafy.new(video_id)
     bestaudio = video.getbestaudio()
-    file_name = bestaudio.title + "." + bestaudio.extension
+    title = bestaudio.title
+    file_name = title + "." + bestaudio.extension
     bestaudio.download()
     subprocess.run(["ffmpeg", "-y", "-i", file_name, "-b:a", bitrate, "audio.mp3"])
     subprocess.run(["rm", file_name])
@@ -179,6 +197,16 @@ def index(request):
                         format = f
             
             read_frames(format)
+            
+            with ZipFile(title+'.zip', 'w') as zipObj:
+                # Add multiple files to the zip
+                zipObj.write('slides.pdf')
+                zipObj.write('mouse.json')
+                zipObj.write('keyboard.json')
+                zipObj.write('metadata')
+                zipObj.write('audio.mp3')
+            
+            subprocess.run(["rm", "slides.pdf", "mouse.json", "keyboard.json", "metadata", "audio.mp3"])
             
     return render(request, 'home.html', {'form': linkform()})
 
