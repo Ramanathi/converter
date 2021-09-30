@@ -9,13 +9,19 @@ import urllib.parse as urlparse
 import subprocess
 import json
 from zipfile import ZipFile
+import mimetypes
+import os
+from django.http.response import HttpResponse
+
+
 
 intensity_threshold=10
 num_threshold = 5 #in percentage
 freq = 10
 title = ""
+img1 = []
+imageList = []
 
-remove_this = True
 ##helper functions
 def isSameFrame(f,f1,s):
     if f.shape != f1.shape:
@@ -52,11 +58,15 @@ def get_yt_link(url):
     return None
 
 def save_image(t, s, prev_frame):
-    t.append(s)
-    # print(t)
     prev_frame = prev_frame[:,:,::-1]
     img = Image.fromarray(prev_frame, 'RGB')
-    img.save(str(s)+'.png')
+    if not t:
+        global img1
+        img1=img
+    else:
+        imageList.append(img)
+    t.append(s)
+    print(t)
     # img.show()
     return t, prev_frame
 
@@ -143,21 +153,12 @@ def mouse(max_time):
         json.dump(mouse_actions, f)
 
 def pdf_gen(s, t):
-    conv = ["convert"]
-    rm = ["rm"]
-    for s in t:
-        conv.append(str(s)+".png")
-        rm.append(str(s)+".png")
-    conv.append("slides.pdf")
-
-    subprocess.run(conv)
-    subprocess.run(rm)
+    img1.save("slides.pdf",save_all=True,append_images=imageList)
 
 
 def audio(video_id, bitrate="20k"):
 
     global title
-
     video = pafy.new(video_id)
     bestaudio = video.getbestaudio()
     title = bestaudio.title
@@ -210,3 +211,21 @@ def index(request):
             
     return render(request, 'home.html', {'form': linkform()})
 
+def download_file(request):
+
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    global title
+    print(title)
+    ## remove this
+    if not title:
+        title = "Operating Systems Lecture 5 Scheduling Policies"
+    ##
+    filename = "/"+title + ".zip"
+    filepath = BASE_DIR + filename
+    path = open(filepath, 'rb')
+    mime_type, _ = mimetypes.guess_type(filepath)
+    response = HttpResponse(path, content_type=mime_type)
+    print(filename)
+    response['Content-Disposition'] = "attachment; filename=%s" % filename
+
+    return response
