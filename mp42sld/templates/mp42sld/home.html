@@ -1,0 +1,91 @@
+{% load static%}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Converter{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="{% static 'css/home.css' %}">
+  {% load crispy_forms_tags %}
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <!-- <script src="./progress.js" defer></script> -->
+  <script src="{% static 'js/home.js' %}" defer></script>
+<body>
+  <main>
+    <div class="top">
+      {% block content %}
+      <h2 class="heading">Youtube to sld</h2>
+      <form method="post" id="form1" >
+        {% csrf_token %}
+        <input id="link" type="text" name="link" placeholder="paste link here...">
+        <div class = "option">
+          <label>Bit rate of audio : </label> <span id="br">20</span>
+          <input type="range" min="10" max="110" value="20" id = "br_slider" name="bitrate" >
+          <script>
+            $(document).on('input', '#br_slider', function() {
+                $('#br').html( $(this).val() );
+            });
+          </script>
+        </div>
+        <div class = "option">
+          <label>freq (seconds): </label> <span id="freq">1</span>
+          <input type="range" min="0.1" max="20" value="1" id = "freq_slider" name="freq" step="0.1" >
+          <script>
+            $(document).on('input', '#freq_slider', function() {
+                $('#freq').html( $(this).val() );
+            });
+          </script>
+        </div>
+        <div class = "option">
+          <label>Intensity threshold : </label> <span id="intensity">10</span>
+          <input type="range" min="1" max="255" value="10" id = "intensity_slider" name="intensity" >
+          <script>
+            $(document).on('input', '#intensity_slider', function() {
+                $('#intensity').html( $(this).val() );
+            });
+          </script>
+        </div>
+        <div class = "option">
+          <label>Sensitivity : </label> <span id="sensitivity">5</span>
+          <input type="range" min="1" max="100" value="5" id = "sensitivity_slider" name="sensitivity" >
+          <script>
+            $(document).on('input', '#sensitivity_slider', function() {
+                $('#sensitivity').html( $(this).val() );
+            });
+          </script>
+        </div>       
+        <!-- {{ form }} -->
+        <button id = "convert" value="submit" type="submit" >convert</button>
+        
+        
+      </form>
+
+      
+      <div class="progress" id="progress" style = "display:none ;">
+        <style>
+          .loading::after {
+            display: inline-block;
+            animation: dotty steps(1,end) 1s infinite;
+            content: '';
+            width: 100px;
+          }
+          
+          @keyframes dotty {
+              0%   { content: ''; }
+              25%  { content: '.'; }
+              50%  { content: '..'; }
+              75%  { content: '...'; }
+              100% { content: ''; }
+          }
+      </style>
+      <div class="loading">Processing</div>
+      </div>
+
+    </div>
+    {% endblock %}
+  </main>
+</body>
+</html>
+
+</body>
+</html>

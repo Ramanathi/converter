@@ -16,8 +16,8 @@ from django.http.response import HttpResponse
 
 
 intensity_threshold=10
-num_threshold = 5 #in percentage
-freq = 10
+sensitivity = 5 #in percentage
+freq = 1
 title = ""
 img1 = []
 imageList = []
@@ -37,7 +37,7 @@ def isSameFrame(f,f1,s):
     #     print((v>intensity_threshold)*v)
 
 
-    if num > (f.shape[0]*f.shape[1]*num_threshold)/100:
+    if num > (f.shape[0]*f.shape[1]*sensitivity)/100:
         return False
     else:
         return True
@@ -171,9 +171,18 @@ def audio(video_id, bitrate="20k"):
 def index(request):
     if request.method == 'POST':
         form = linkform(request.POST)
+
         if form.is_valid():
             video_id = get_yt_link(form.cleaned_data.get('link'))
             bitrate = str(form.cleaned_data.get('bitrate'))+"k"
+            print("can")
+            global intensity_threshold,freq,sensitivity
+            intensity_threshold = form.cleaned_data.get('intensity')
+            freq = float(form.cleaned_data.get('freq'))
+            sensitivity = form.cleaned_data.get('sensitivity')
+            print(intensity_threshold,freq,sensitivity)
+            print("can you see?")
+
             audio(video_id, bitrate)
             # bestaudio = video.getbestaudio()
             # bestaudio.download()
@@ -209,7 +218,7 @@ def index(request):
             
             subprocess.run(["rm", "slides.pdf", "mouse.json", "keyboard.json", "metadata", "audio.mp3"])
             
-    return render(request, 'home.html', {'form': linkform()})
+    return render(request, 'mp42sld/home.html')#, {'form': linkform()})
 
 def download_file(request):
 
