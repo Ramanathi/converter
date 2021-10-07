@@ -25,7 +25,7 @@ SECRET_KEY = '*8+lh#$nb^a(1s#_4&i&dv5d#g7%nzjk$%ya6$qj)&53&sl!1z'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 CRISPY_TEMPLATE_PACK = 'uni_form'
 

@@ -12,10 +12,7 @@
     text-align: center;
 }
 
-.progress{
-    width: inherit;
-    margin: 20px;
-}
+
 
 .loading:after {
     overflow: hidden;

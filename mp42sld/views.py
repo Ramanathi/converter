@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from mp42sld.forms import linkform
 import cv2
 import youtube_dl
@@ -12,6 +12,7 @@ from zipfile import ZipFile
 import mimetypes
 import os
 from django.http.response import HttpResponse
+import time
 
 
 
@@ -217,6 +218,7 @@ def index(request):
                 zipObj.write('audio.mp3')
             
             subprocess.run(["rm", "slides.pdf", "mouse.json", "keyboard.json", "metadata", "audio.mp3"])
+            return redirect('/mp42sld/download')
             
     return render(request, 'mp42sld/home.html')#, {'form': linkform()})
 
@@ -227,7 +229,7 @@ def download_file(request):
     print(title)
     ## remove this
     if not title:
-        title = "Operating Systems Lecture 5 Scheduling Policies"
+        title = str(int(time.time()))
     ##
     filename = "/"+title + ".zip"
     filepath = BASE_DIR + filename
