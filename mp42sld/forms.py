@@ -5,4 +5,4 @@ class linkform(forms.Form):
     bitrate = forms.DecimalField(min_value=10, max_value=110)
     freq = forms.DecimalField(min_value=0.1, max_value=20)
     sensitivity = forms.DecimalField(min_value=1, max_value=100)
-    intensity = forms.DecimalField(min_value=1, max_value=255)
+    # intensity = forms.DecimalField(min_value=1, max_value=255)

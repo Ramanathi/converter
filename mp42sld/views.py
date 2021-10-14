@@ -94,6 +94,7 @@ def read_frames(f):
 
     while True:
         # read frame
+        # t1 = time.time()
         ret, frame = cap.read()
         s+=freq
 
@@ -108,8 +109,6 @@ def read_frames(f):
         if remove:
             shape = frame.shape
             remove = False
-        
-        if s==0:
             prev_frame = frame
 
         isSF = isSameFrame(frame,prev_frame,s)
@@ -118,13 +117,15 @@ def read_frames(f):
             t, prev_frame = save_image(t, s, prev_frame)
             key_actions.append([s, "RIGHT"])
 
-        prev_frame = frame
-                    
+        prev_frame = frame  
         count += freq*fps # i.e.this advances freq seconds
         cap.set(1, count)
 
+
         if cv2.waitKey(30)&0xFF == ord('q'):
             break
+        # tf = time.time()
+        # print("while",tf-t1)
 
     # release VideoCapture
     cap.release()
@@ -172,17 +173,17 @@ def audio(video_id, bitrate="20k"):
 def index(request):
     if request.method == 'POST':
         form = linkform(request.POST)
+        # print(form)
 
         if form.is_valid():
             video_id = get_yt_link(form.cleaned_data.get('link'))
             bitrate = str(form.cleaned_data.get('bitrate'))+"k"
-            print("can")
             global intensity_threshold,freq,sensitivity
-            intensity_threshold = form.cleaned_data.get('intensity')
+            # intensity_threshold = form.cleaned_data.get('intensity')
             freq = float(form.cleaned_data.get('freq'))
             sensitivity = form.cleaned_data.get('sensitivity')
             print(intensity_threshold,freq,sensitivity)
-            print("can you see?")
+            # print("can you see?")
 
             audio(video_id, bitrate)
             # bestaudio = video.getbestaudio()
@@ -238,5 +239,5 @@ def download_file(request):
     response = HttpResponse(path, content_type=mime_type)
     print(filename)
     response['Content-Disposition'] = "attachment; filename=%s" % filename
-
+    
     return response

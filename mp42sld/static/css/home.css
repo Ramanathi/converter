@@ -1,6 +1,6 @@
 .top {
     /* align-content: center; */
-    margin: 10%;
+    margin: 3%;
     /* max-width: fit-content; */
     align-items: center;
     display: flex;
@@ -10,9 +10,127 @@
 
 .heading {
     text-align: center;
+    color: #04AA6D;
+}
+
+.convert_input{
+  width: 100%;
+  height: 30px;
+  margin-top: 30px;
+}
+
+.options{
+  display: flex;
+  flex-flow: row wrap;
+  flex-grow: 1;
+  position: relative;
+  /* left: 40px; */
+  justify-content: space-around;
+  
+}
+
+.option{
+  width: 35% ;
+  min-width: fit-content;
+  margin: 15px;
+}
+.slider {
+  -webkit-appearance: none;
+  width: 80%;
+  height: 10px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+  margin-top: 10px;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #04AA6D;
+  cursor: pointer;
+  border-radius: 40%;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: #04AA6D;
+  cursor: pointer;
+}
+
+.button {
+  position: relative;
+  background-color: #04AA6D;
+  border: none;
+  font-size: 20px;
+  color: #FFFFFF;
+  padding: 10px;
+  width: 120px;
+  text-align: center;
+  -webkit-transition-duration: 0.4s;
+  transition-duration: 0.4s;
+  text-decoration: none;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 8%;
+  margin: 10px;
+  left: 30px;
+}
+
+.button span {
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+  transition: 0.5s;
+}
+
+.button span:after {
+  content: '\00bb';
+  position: absolute;
+  opacity: 0;
+  top: 0;
+  right: -20px;
+  transition: 0.5s;
+}
+
+.button:hover span {
+  padding-right: 25px;
+}
+
+.button:hover span:after {
+  opacity: 1;
+  right: 0;
 }
 
 
+.button:after {
+  content: "";
+  background: #90EE90;
+  display: block;
+  position: absolute;
+  padding-top: 300%;
+  padding-left: 350%;
+  margin-left: -20px!important;
+  margin-top: -120%;
+  opacity: 0;
+  transition: all 0.8s
+}
+
+.button:active:after {
+  padding: 0;
+  margin: 0;
+  opacity: 1;
+  transition: 0s
+}
 
 .loading:after {
     overflow: hidden;
@@ -85,4 +203,14 @@ content: none;
 border-color: #3aac5d;
 background: #3aac5d;
 color: white
+}
+
+.instructions{
+  width: 40%;
+  margin-top: 20px;
+  border: #04AA6D;
+  /* border-radius: 2%; */
+  border-style: solid;
+  padding: 10px;
+
 }

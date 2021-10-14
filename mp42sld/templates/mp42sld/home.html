@@ -14,61 +14,67 @@
   <main>
     <div class="top">
       {% block content %}
-      <h2 class="heading">Youtube to sld</h2>
-      <form method="post" id="form1" >
+      <h1 class="heading">Youtube to sld</h1>
+      <form method="post" id="form1" style="width: 40%;">
         {% csrf_token %}
-        <input id="link" type="text" name="link" placeholder="paste link here...">
-        <div class = "option">
-          <label>Bit rate of audio : </label> <span id="br">20</span>
-          <input type="range" min="10" max="110" value="20" id = "br_slider" name="bitrate" >
-          <script>
-            $(document).on('input', '#br_slider', function() {
-                $('#br').html( $(this).val() );
-            });
-          </script>
-        </div>
-        <div class = "option">
-          <label>freq (seconds): </label> <span id="freq">1</span>
-          <input type="range" min="0.1" max="20" value="1" id = "freq_slider" name="freq" step="0.1" >
-          <script>
-            $(document).on('input', '#freq_slider', function() {
-                $('#freq').html( $(this).val() );
-            });
-          </script>
-        </div>
-        <div class = "option">
-          <label>Intensity threshold : </label> <span id="intensity">10</span>
-          <input type="range" min="1" max="255" value="10" id = "intensity_slider" name="intensity" >
-          <script>
-            $(document).on('input', '#intensity_slider', function() {
-                $('#intensity').html( $(this).val() );
-            });
-          </script>
-        </div>
-        <div class = "option">
-          <label>Sensitivity : </label> <span id="sensitivity">5</span>
-          <input type="range" min="1" max="100" value="5" id = "sensitivity_slider" name="sensitivity" >
-          <script>
-            $(document).on('input', '#sensitivity_slider', function() {
-                $('#sensitivity').html( $(this).val() );
-            });
-          </script>
-        </div>       
+        <input id="link" class="convert_input" type="text" name="link" placeholder="Please insert a valid link here">
+        <div class = "options">
+          <div class = "option">
+            <label>Bit rate of audio : </label> <span id="br">20</span>
+            <br>
+            <input type="range" class="slider"  min="10" max="110" value="20" id = "br_slider" name="bitrate" >
+            <script>
+              $(document).on('input', '#br_slider', function() {
+                  $('#br').html( $(this).val() );
+              });
+            </script>
+          </div>
+          <div class = "option">
+            <label>Freq (seconds): </label> <span id="freq">1</span>
+            <br>
+            <input type="range" class="slider" min="0.1" max="20" value="1" id = "freq_slider" name="freq" step="0.1" >
+            <script>
+              $(document).on('input', '#freq_slider', function() {
+                  $('#freq').html( $(this).val() );
+              });
+            </script>
+          </div>
+          <!-- <div class = "option">
+            <label>Intensity threshold : </label> <span id="intensity">10</span>
+            <br>
+            <input type="range" class="slider" min="1" max="255" value="10" id = "intensity_slider" name="intensity" >
+            <script>
+              $(document).on('input', '#intensity_slider', function() {
+                  $('#intensity').html( $(this).val() );
+              });
+            </script>
+          </div> -->
+          <div class = "option">
+            <label>Sensitivity : </label> <span id="sensitivity">5</span>
+            <br>
+            <input type="range" class="slider"  min="1" max="100" value="5" id = "sensitivity_slider" name="sensitivity" >
+            <script>
+              $(document).on('input', '#sensitivity_slider', function() {
+                  $('#sensitivity').html( $(this).val() );
+              });
+            </script>
+          </div>  
+        </div>     
         <!-- {{ form }} -->
-        <button id = "convert" value="submit" type="submit" >convert</button>
+        <button id = "convert" class="button" value="submit" type="submit" ><span>convert</span></button>
         
         
       </form>
 
       
-      <div  id="progress" style = "display:none ;">
+      <div  id="progress" style = "display:none ; font-size: 20px;">
         <style>
           .loading::after {
             display: inline-block;
             animation: dotty steps(1,end) 1s infinite;
             content: '';
             width: 100px;
-            margin: 20px;
+            margin: 0px;
           }
           
           @keyframes dotty {
@@ -78,8 +84,22 @@
               75%  { content: '...'; }
               100% { content: ''; }
           }
-      </style>
-      <div class="loading">Processing</div>
+        </style>
+        <div class="loading">Processing</div>
+      </div>
+      <div class="instructions" >
+        <h2 class="heading" style="margin-top: 5px;">Instructions</h2>
+        <ul>
+          <li>Adjust the above parameters and click convert button to get a sld file from any valid youtube link</li>
+          <li>Please note the following points while adjusting the parameters :</li>
+          <ul style="list-style-type:circle; list-style: #04AA6D;">
+            <li>Higher the 'Bit rate of audio', higher the audio quality and larger the downloaded file size  </li>
+            <li>Higher the 'Freq', lower the expected time taken to download the file and poorer the expected quality of slides in the downloaded video</li>
+            <!-- <li>Higher the 'Intensity threshold', more is the difference between consecutive slides</li> -->
+            <li>Higher the 'Sensitivity', more is the difference between consecutive slides in the downloaded video</li>
+          </ul>
+          <li>You can play the downloaded sld <a style="color: #04AA6D;" href="slidecast.github.io">here</a></li>
+        </ul>
       </div>
 
     </div>
