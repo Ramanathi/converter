@@ -102,6 +102,10 @@
   transition: 0.5s;
 }
 
+#stop span:after{
+  content: '\00d7' !important;  
+} 
+
 .button:hover span {
   padding-right: 25px;
 }
