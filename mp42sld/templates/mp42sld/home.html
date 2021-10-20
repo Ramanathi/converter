@@ -18,6 +18,7 @@
       <form method="post" id="form1" style="width: 40%;">
         {% csrf_token %}
         <input id="link" class="convert_input" type="text" name="link" placeholder="Please insert a valid link here">
+        <input id="title" type="text" name="title" value="{{ title }}" hidden>
         <div class = "options">
           <div class = "option">
             <label>Bit rate of audio : </label> <span id="br">20</span>

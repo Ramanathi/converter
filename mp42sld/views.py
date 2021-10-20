@@ -13,10 +13,36 @@ import mimetypes
 import os
 from django.http.response import HttpResponse
 import time
+from wsgiref.util import FileWrapper
+from django.http import StreamingHttpResponse
+
+class FileDeleteWrapper(FileWrapper):
+    def __init__(self, filepath, *args, **kwargs):
+        self.filepath = filepath
+        super(FileDeleteWrapper, self).__init__(*args, **kwargs)
+
+    def __del__(self, *args, **kwargs):
+        os.remove(self.filepath)
 
 
+def return_flag(title, file):
+    with open(title+'/'+file, 'r') as file:
+        line = file.readlines()[0].split()[0]
+        if line == "False":
+            return False
+        else:
+            return True
 
-cancel = False
+def write_to_file(title, file, content):
+    f = open(title+'/'+file, "w")
+    f.write(content)
+    f.close()
+
+def canceled(title):
+    return return_flag(title, 'cancel.txt')
+
+def write_cancel(title, cancel):
+    write_to_file(title, 'cancel.txt', cancel)
 
 ##helper functions
 def isSameFrame(f,f1,s, intensity_threshold, sensitivity, freq):
@@ -89,7 +115,7 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
 
     while True:
         # read frame
-        if not cancel:
+        if not canceled(title):
             ret, frame = cap.read()
             s+=freq
 
@@ -127,14 +153,14 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
     cv2.destroyAllWindows()
 
     # creating pdf
-    if not cancel:
+    if not canceled(title):
         pdf_gen(imageList, title)
     else:
         rmfiles(title)
         return
 
     # keyboard actions
-    if not cancel:
+    if not canceled(title):
         with open(title+"/keyboard.json", 'w') as f:
             json.dump(key_actions, f)
     else:
@@ -142,7 +168,7 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
         return
 
     #metadata
-    if not cancel:
+    if not canceled(title):
         with open(title+"/metadata", 'w') as f:
             json.dump({"width":shape[0],"height":shape[1]}, f)
     else:
@@ -150,7 +176,7 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
         return
 
     #mouse
-    if not cancel:
+    if not canceled(title):
         mouse(s, title)
     else:
         rmfiles(title)
@@ -168,31 +194,32 @@ def pdf_gen(imageList, title):
     imageList[0].save(title+"/slides.pdf",save_all=True,append_images=imageList[1:])
 
 
-def audio(video_id, bitrate="20k"):
+def audio(video_id, title, bitrate="20k"):
 
     video = pafy.new(video_id)
     bestaudio = video.getbestaudio()
-    title = bestaudio.title
-    title = str(int(time.time()))
     subprocess.run(["mkdir", title])
+    write_cancel(title, 'False')
     file_name = title + "." + bestaudio.extension
     bestaudio.download(filepath = title+"/"+file_name)
-    subprocess.run(["ffmpeg", "-y", "-i", title+"/"+file_name, "-b:a", bitrate, title+"/audio.mp3"])
 
-    return title
+    if not canceled(title):
+        subprocess.run(["ffmpeg", "-y", "-i", title+"/"+file_name, "-b:a", bitrate, title+"/audio.mp3"])
 
 # Create your views here.
 def index(request):
-    global cancel
+
+    title = str(int(time.time()))
 
     if request.method == 'POST':
         form = linkform(request.POST)
 
         if form.is_valid():
 
+            title = form.cleaned_data.get('title')
+
             if 'convert' in request.POST:
                 
-                cancel = False
                 video_id = get_yt_link(form.cleaned_data.get('link'))
                 bitrate = str(form.cleaned_data.get('bitrate'))+"k"
                 print("can")
@@ -202,9 +229,7 @@ def index(request):
                 print(intensity_threshold,freq,sensitivity)
                 # print("can you see?")
 
-                started = True
-                if not cancel:
-                   title = audio(video_id, bitrate)
+                audio(video_id, title, bitrate)
                    
                 # bestaudio = video.getbestaudio()
                 # bestaudio.download()
@@ -228,10 +253,10 @@ def index(request):
                             max_px = px
                             format = f
                 
-                if not cancel:
+                if not canceled(title):
                     read_frames(format, intensity_threshold, sensitivity, freq, title)
 
-                if not cancel:
+                if not canceled(title):
                     with ZipFile(title+'.zip', 'w') as zipObj:
                         # Add multiple files to the zip
                         zipObj.write(title+'/slides.pdf')
@@ -240,16 +265,18 @@ def index(request):
                         zipObj.write(title+'/metadata')
                         zipObj.write(title+'/audio.mp3')
                 
+                
+                redirect_str = '/mp42sld'
+                if not canceled(title):
+                    redirect_str = redirect_str + '/download/' + title
+                    
                 rmfiles(title)
-                if not cancel:
-                    return redirect('/mp42sld/download/'+title)
-                else:
-                    return redirect('/mp42sld')
+                return redirect(redirect_str)
 
             else:
-                cancel = True
+                write_cancel(title, 'True')
             
-    return render(request, 'mp42sld/home.html')#, {'form': linkform()})
+    return render(request, 'mp42sld/home.html', {'title' : title})#, {'form': linkform()})
 
 def download_file(request, title):
 
@@ -257,11 +284,18 @@ def download_file(request, title):
     print(title)
     ## remove this
     ##
-    filename = "/"+title + ".zip"
-    filepath = BASE_DIR + filename
-    path = open(filepath, 'rb')
-    mime_type, _ = mimetypes.guess_type(filepath)
-    response = HttpResponse(path, content_type=mime_type)
+    filename = title + ".zip"
+    filepath = BASE_DIR +'/'+ filename
+    # path = open(filepath, 'rb')
+    # mime_type, _ = mimetypes.guess_type(filepath)
+    # response = HttpResponse(path, content_type=mime_type)
+    response = StreamingHttpResponse(
+            FileDeleteWrapper(
+                filepath = filepath,
+                filelike=open(filepath, 'rb'),
+                blksize=16384
+            )
+        )
     print(filename)
     response['Content-Disposition'] = "attachment; filename=%s" % filename
 
