@@ -13,16 +13,6 @@ import mimetypes
 import os
 from django.http.response import HttpResponse
 import time
-from wsgiref.util import FileWrapper
-from django.http import StreamingHttpResponse
-
-class FileDeleteWrapper(FileWrapper):
-    def __init__(self, filepath, *args, **kwargs):
-        self.filepath = filepath
-        super(FileDeleteWrapper, self).__init__(*args, **kwargs)
-
-    def __del__(self, *args, **kwargs):
-        os.remove(self.filepath)
 
 
 def return_flag(title, file):
@@ -54,9 +44,6 @@ def isSameFrame(f,f1,s, intensity_threshold, sensitivity, freq):
     v = abs(f_int-f1_int)
 
     num = sum(sum((v > intensity_threshold) * np.ones(v.shape)))
-    # if (f==f1).all():
-    #     print(v)
-    #     print((v>intensity_threshold)*v)
 
 
     if num > (f.shape[0]*f.shape[1]*sensitivity)/100:
@@ -92,12 +79,26 @@ def save_image(t, s, prev_frame, imageList):
     # img.show()
     return t, prev_frame, imageList
 
-def read_frames(f, intensity_threshold, sensitivity, freq, title):
+def rescale_frame(frame_input):
+    if frame_input.shape[0] > 480 :
+        percent = 480/frame_input.shape[0]
+        width = int(frame_input.shape[1] * percent)
+        height = int(frame_input.shape[0] * percent)
+        dim = (width, height)
+        return cv2.resize(frame_input, dim, interpolation=cv2.INTER_AREA)
+    else:
+        return frame_input
+
+def read_frames(f, intensity_threshold, sensitivity, freq, title, is_link):
 
     #get the video url
-    url = f.get('url',None)
+    if is_link:
+        url = f.get('url',None)
+        cap = cv2.VideoCapture(url)
+    else:
+        cap = cv2.VideoCapture(f)
     # open url with opencv
-    cap = cv2.VideoCapture(url)
+    
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # check if url was opened
@@ -124,6 +125,7 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
                 t, prev_frame, imageList = save_image(t, s, prev_frame, imageList)
                 break
 
+            frame = rescale_frame(frame)
             # display frame
             # cv2.imshow('frame', frame)
 
@@ -156,7 +158,6 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
     if not canceled(title):
         pdf_gen(imageList, title)
     else:
-        rmfiles(title)
         return
 
     # keyboard actions
@@ -164,22 +165,18 @@ def read_frames(f, intensity_threshold, sensitivity, freq, title):
         with open(title+"/keyboard.json", 'w') as f:
             json.dump(key_actions, f)
     else:
-        rmfiles(title)
         return
 
     #metadata
     if not canceled(title):
         with open(title+"/metadata", 'w') as f:
-            json.dump({"width":shape[0],"height":shape[1]}, f)
+            json.dump({"width":shape[1],"height":shape[0]}, f)
     else:
-        rmfiles(title)
         return
 
     #mouse
     if not canceled(title):
         mouse(s, title)
-    else:
-        rmfiles(title)
 
 def mouse(max_time, title):
     mouse_actions = []
@@ -198,63 +195,82 @@ def audio(video_id, title, bitrate="20k"):
 
     video = pafy.new(video_id)
     bestaudio = video.getbestaudio()
-    subprocess.run(["mkdir", title])
-    write_cancel(title, 'False')
     file_name = title + "." + bestaudio.extension
     bestaudio.download(filepath = title+"/"+file_name)
 
     if not canceled(title):
         subprocess.run(["ffmpeg", "-y", "-i", title+"/"+file_name, "-b:a", bitrate, title+"/audio.mp3"])
 
+def remove_redundant():
+    arr = os.listdir('./')
+    for name in arr:
+        if int(time.time()) - int(os.path.getmtime(name)) > 10000:
+            try:
+                foldername = int(name)
+                rmfiles(name)
+            except:
+                if name[-3:] == 'zip':
+                    subprocess.run(['rm', name])
+
 # Create your views here.
 def index(request):
 
     title = str(int(time.time()))
+    params = {'title' : title, 'done' : False}
+
+    remove_redundant()
 
     if request.method == 'POST':
         form = linkform(request.POST)
+        form.is_valid()
 
-        if form.is_valid():
+        if form.cleaned_data.get('link') or request.FILES.get('myfile'):
 
             title = form.cleaned_data.get('title')
+            params['title'] = title
 
             if 'convert' in request.POST:
                 
-                video_id = get_yt_link(form.cleaned_data.get('link'))
                 bitrate = str(form.cleaned_data.get('bitrate'))+"k"
-                print("can")
                 intensity_threshold = 10
                 freq = float(form.cleaned_data.get('freq'))
                 sensitivity = form.cleaned_data.get('sensitivity')
-                print(intensity_threshold,freq,sensitivity)
-                # print("can you see?")
+                is_link = True
 
-                audio(video_id, title, bitrate)
-                   
-                # bestaudio = video.getbestaudio()
-                # bestaudio.download()
-
-                ydl_opts = {}
                 
-                # create youtube-dl object
-                ydl = youtube_dl.YoutubeDL(ydl_opts)
+                subprocess.run(["mkdir", title])
+                write_cancel(title, 'False')
 
                 # set video url, extract video information
-                info_dict = ydl.extract_info(video_id, download=False)
+                if form.cleaned_data.get('link'):
 
-                # get video formats available
-                formats = info_dict.get('formats',None)
+                    ydl = youtube_dl.YoutubeDL({})
+                    video_id = get_yt_link(form.cleaned_data.get('link'))
+                    info_dict = ydl.extract_info(video_id, download=False)
+                    audio(video_id, title, bitrate)
 
-                max_px = '000p'
-                for f in formats:
-                    px = f.get('format_note',None)
-                    if px[0] >= '0' and px[0] <= '9' and px <= '480p':
-                        if px > max_px:
-                            max_px = px
-                            format = f
+                    # get video formats available
+                    formats = info_dict.get('formats',None)
+
+                    max_px = '000p'
+                    for f in formats:
+                        px = f.get('format_note',None)
+                        if px[0] >= '0' and px[0] <= '9' and px <= '480p':
+                            if px > max_px:
+                                max_px = px
+                                format = f
+                else:
+                    is_link = False
+                    f = request.FILES['myfile']
+                    format = title+'/'+title+'.mp4'
+                    with open(format, 'wb+') as destination:
+                        for chunk in f.chunks():
+                            destination.write(chunk)
+                    command = "ffmpeg -i "+ format +" -ab "+bitrate+" -ac 2 -ar 44100 -vn " +title+"/audio.mp3"
+                    subprocess.run(command.split())
                 
                 if not canceled(title):
-                    read_frames(format, intensity_threshold, sensitivity, freq, title)
+                    read_frames(format, intensity_threshold, sensitivity, freq, title, is_link)
 
                 if not canceled(title):
                     with ZipFile(title+'.zip', 'w') as zipObj:
@@ -264,38 +280,30 @@ def index(request):
                         zipObj.write(title+'/keyboard.json')
                         zipObj.write(title+'/metadata')
                         zipObj.write(title+'/audio.mp3')
-                
-                
-                redirect_str = '/mp42sld'
-                if not canceled(title):
-                    redirect_str = redirect_str + '/download/' + title
-                    
-                rmfiles(title)
-                return redirect(redirect_str)
 
-            else:
+                    params['done'] = True
+
+            elif 'cancel' in request.POST:
                 write_cancel(title, 'True')
             
-    return render(request, 'mp42sld/home.html', {'title' : title})#, {'form': linkform()})
+        elif 'download' in request.POST :
+            title = form.cleaned_data.get('title')
+            if title+'.zip' in os.listdir('./'):
+                return redirect('/mp42sld/download/' + title)
+            else:
+                return HttpResponse("<html><body>Session Expired/File not Found, <a href="+'"'+"/mp42sld"+'"'+">Reload</a></body></html>")
+            
+    return render(request, 'mp42sld/home.html', params)#, {'form': linkform()})
 
 def download_file(request, title):
 
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    print(title)
-    ## remove this
-    ##
+
     filename = title + ".zip"
     filepath = BASE_DIR +'/'+ filename
-    # path = open(filepath, 'rb')
-    # mime_type, _ = mimetypes.guess_type(filepath)
-    # response = HttpResponse(path, content_type=mime_type)
-    response = StreamingHttpResponse(
-            FileDeleteWrapper(
-                filepath = filepath,
-                filelike=open(filepath, 'rb'),
-                blksize=16384
-            )
-        )
+    path = open(filepath, 'rb')
+    mime_type, _ = mimetypes.guess_type(filepath)
+    response = HttpResponse(path, content_type=mime_type)
     print(filename)
     response['Content-Disposition'] = "attachment; filename=%s" % filename
 

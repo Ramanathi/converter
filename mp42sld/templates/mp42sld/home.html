@@ -14,11 +14,50 @@
   <main>
     <div class="top">
       {% block content %}
-      <h1 class="heading">Youtube to sld</h1>
-      <form method="post" id="form1" style="width: 40%;">
+      <h1 class="heading">Video to sld</h1>
+      <script>
+          document.getElementById("myfile").disabled = true;
+          function hide_link_input(x) {
+            if (x.checked) {
+                document.getElementById("link").disabled = true;
+                document.getElementById("myfile").disabled = false;
+            }
+            }
+
+            function hide_file_input(x) {
+            if (x.checked) {
+                document.getElementById("myfile").disabled = true;
+                document.getElementById("link").disabled = false;
+            }
+ }
+      </script>
+      <script>
+        function fileValidation() {
+            var fileInput = 
+                document.getElementById('myfile');
+              
+            var filePath = fileInput.value;
+          
+            // Allowing file type
+            var allowedExtensions = /(\.mp4)$/i;
+              
+            if (!allowedExtensions.exec(filePath)) {
+                alert('Invalid file type, only mp4 formats are allowed');
+                fileInput.value = '';
+                return false;
+            } 
+        }
+    </script>
+      <form method="post" id="form1" style="width: 40%;" enctype="multipart/form-data">
         {% csrf_token %}
-        <input id="link" class="convert_input" type="text" name="link" placeholder="Please insert a valid link here">
+        <input type="radio" onchange="hide_file_input(this)" name="aorb" checked> <label> Use youtube link </label>
+        <br>
+        <input type="radio" onchange="hide_link_input(this)" name="aorb"> <label> Use mp4 file </label>
+        <div id = "A"><input id="link" class="convert_input" type="text" name="link" placeholder="Please insert a valid link here"></div>
+        <br>
+        <div id = "B" ><input type="file" id="myfile" name="myfile" onchange="fileValidation()" disabled></div>
         <input id="title" type="text" name="title" value="{{ title }}" hidden>
+        <!-- <input id="title" type="text" name="title" value="{{ done }}" hidden> -->
         <div class = "options">
           <div class = "option">
             <label>Bit rate of audio : </label> <span id="br">20</span>
@@ -62,13 +101,25 @@
           </div>  
         </div>     
         <!-- {{ form }} -->
+        <script>
+          function fun(){
+            document.getElementById('notice').style.display = "block";
+          }
+        </script>
         <div>
+          
+          {% if done %}
+          <div style="margin-left: 35%; margin-right: 35%;">
+            <button id = "download" class="button" name="download" type="submit"><span>Download</span></button>
+          </div>
+          {% else %}
           <div style="float: left; ">
-            <button id = "convert" class="button" name="convert" type="submit" ><span>convert</span></button>
+            <button id = "convert" class="button" name="convert" type="submit" onclick="fun()"><span>convert</span></button>
           </div>
           <div style="float: right; margin-right: 50px;">
             <button id = "stop" class="button" name="cancel" type="submit" ><span>Cancel</span></button>
           </div>
+          {% endif %}
         </div>
         
         
@@ -76,7 +127,7 @@
         
       </form>
 
-      
+      <meta id="my-data" data-duration="{{ duration }}" >
       <div  id="progress" style = "display:none ; font-size: 20px;">
         <style>
           .loading::after {
@@ -97,10 +148,23 @@
         </style>
         <div class="loading">Processing</div>
       </div>
+
+      <script>
+        var d = new Date()
+        var djangoData = Number($('#my-data').duration());
+        var hr = d.getHours()+djangoData/3600
+        var min = d.getMinutes()+ ((djangoData % 3600) / 60)
+
+        document.getElementById('para').innerHTML = "Please check out at" + String(hr) + " hrs : "+String(min)+" min, you can download when the download button appears"
+
+      </script>
+      <div id="notice" style="display:none;">
+        <p id="para">Please check out after sometime, download button will be appear after file is ready</p>
+      </div>
       <div class="instructions" >
         <h2 class="heading" style="margin-top: 5px;">Instructions</h2>
         <ul>
-          <li>Adjust the above parameters and click convert button to get a sld file from any valid youtube link</li>
+          <li>Adjust the above parameters and click convert button to get a sld file from any valid youtube link or video file in mp4 format</li>
           <li>Please note the following points while adjusting the parameters :</li>
           <ul style="list-style-type:circle; list-style: #04AA6D;">
             <li>Higher the 'Bit rate of audio', higher the audio quality and larger the downloaded file size  </li>
@@ -108,7 +172,7 @@
             <!-- <li>Higher the 'Intensity threshold', more is the difference between consecutive slides</li> -->
             <li>Higher the 'Sensitivity', more is the difference between consecutive slides in the downloaded video</li>
           </ul>
-          <li>You can play the downloaded sld <a style="color: #04AA6D;" href="slidecast.github.io">here</a></li>
+          <li>You can play the downloaded sld <a style="color: #04AA6D;" href="https://slidecast.github.io/" target="_blank">here</a></li>
         </ul>
       </div>
 
