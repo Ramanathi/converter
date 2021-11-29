@@ -8,7 +8,7 @@ import time
 def remove_redundant():
     arr = os.listdir('./')
     for name in arr:
-        if int(time.time()) - int(os.path.getmtime(name)) > 10:
+        if int(time.time()) - int(os.path.getmtime(name)) > 10800:
             try:
                 foldername = int(name)
                 rmfiles(name)
