@@ -6,5 +6,4 @@ class linkform(forms.Form):
     freq = forms.DecimalField(min_value=0.1, max_value=20)
     sensitivity = forms.DecimalField(min_value=1, max_value=100)
     title = forms.CharField(max_length=100)
-    # intensity = forms.DecimalField(min_value=1, max_value=255)
     file = forms.FileField()

@@ -6,19 +6,7 @@ import mimetypes
 import os
 from django.http.response import HttpResponse
 import time
-from mp42sld.utils import *
-
-# all folders and zip files will be removed when a user tries to access this conversion tool if those were existing in the server for more than 3 hrs
-def remove_redundant():
-    arr = os.listdir('./')
-    for name in arr:
-        if int(time.time()) - int(os.path.getmtime(name)) > 10800:
-            try:
-                foldername = int(name)
-                rmfiles(name)
-            except:
-                if name[-3:] == 'zip':
-                    subprocess.run(['rm', name])
+from mp42sld.Instance import *
 
 # Create your views here.
 def index(request):
@@ -78,7 +66,7 @@ def index(request):
                     subprocess.run(command.split())
                 
                 if not canceled(title):
-                    read_frames(format, intensity_threshold, sensitivity, freq, title, is_link)
+                    Instance(format, intensity_threshold, sensitivity, freq, title, is_link)
 
                 if not canceled(title):
                     with ZipFile(title+'.zip', 'w') as zipObj:

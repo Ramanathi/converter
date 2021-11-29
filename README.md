@@ -15,3 +15,8 @@ pip3 install -r requirements.txt
 ```bash
 python3 manage.py runserver
 ```
+## Usage
+1. navigate to [http://127.0.0.1:8000/mp42sld/](http://127.0.0.1:8000/mp42sld/)
+1. Paste a youtube link or upload a video file of a lecture video
+2. set all required parameters - audio bit rate : 20k is enough for decent audibility. sensitivity and freq are set to optimal according to our test files
+3. click convert and wait till download option appears. Click download to get zipped sld file and you may play it on locally installed progressive web application of slidecast
