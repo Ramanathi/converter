@@ -1,210 +1,18 @@
 from django.shortcuts import render, redirect
 from mp42sld.forms import linkform
-import cv2
 import youtube_dl
-import pafy 
-from PIL import Image
-import numpy as np
-import urllib.parse as urlparse 
-import subprocess
-import json
 from zipfile import ZipFile
 import mimetypes
 import os
 from django.http.response import HttpResponse
 import time
+from mp42sld.utils import *
 
-
-def return_flag(title, file):
-    with open(title+'/'+file, 'r') as file:
-        line = file.readlines()[0].split()[0]
-        if line == "False":
-            return False
-        else:
-            return True
-
-def write_to_file(title, file, content):
-    f = open(title+'/'+file, "w")
-    f.write(content)
-    f.close()
-
-def canceled(title):
-    return return_flag(title, 'cancel.txt')
-
-def write_cancel(title, cancel):
-    write_to_file(title, 'cancel.txt', cancel)
-
-##helper functions
-def isSameFrame(f,f1,s, intensity_threshold, sensitivity, freq):
-    if f.shape != f1.shape:
-        print("ERROR!! two frames of video are having different shapes")
-
-    f_int = np.sqrt(np.sum(np.square(f),axis=2))
-    f1_int = np.sqrt(np.sum(np.square(f1),axis=2))
-    v = abs(f_int-f1_int)
-
-    num = sum(sum((v > intensity_threshold) * np.ones(v.shape)))
-
-
-    if num > (f.shape[0]*f.shape[1]*sensitivity)/100:
-        return False
-    else:
-        return True
-
-def rmfiles(title):
-    subprocess.run(["rm", "-r", title])
-
-def get_yt_link(url):
-    query = urlparse.urlparse(url)
-    if query.hostname == 'youtu.be':
-        return query.path[1:]
-    if query.hostname in ('www.youtube.com', 'youtube.com'):
-        if query.path == '/watch':
-            p = urlparse.parse_qs(query.query)
-            return p['v'][0]
-        if query.path[:7] == '/embed/':
-            return query.path.split('/')[2]
-        if query.path[:3] == '/v/':
-            return query.path.split('/')[2]
-    # fail?
-    return None
-
-def save_image(t, s, prev_frame, imageList):
-    
-    prev_frame = prev_frame[:,:,::-1]
-    img = Image.fromarray(prev_frame, 'RGB')
-    imageList.append(img)
-    t.append(s)
-    print(t)
-    # img.show()
-    return t, prev_frame, imageList
-
-def rescale_frame(frame_input):
-    if frame_input.shape[0] > 480 :
-        percent = 480/frame_input.shape[0]
-        width = int(frame_input.shape[1] * percent)
-        height = int(frame_input.shape[0] * percent)
-        dim = (width, height)
-        return cv2.resize(frame_input, dim, interpolation=cv2.INTER_AREA)
-    else:
-        return frame_input
-
-def read_frames(f, intensity_threshold, sensitivity, freq, title, is_link):
-
-    #get the video url
-    if is_link:
-        url = f.get('url',None)
-        cap = cv2.VideoCapture(url)
-    else:
-        cap = cv2.VideoCapture(f)
-    # open url with opencv
-    
-    fps = cap.get(cv2.CAP_PROP_FPS)
-
-    # check if url was opened
-    if not cap.isOpened():
-        print('video not opened')
-        exit(-1)
-
-    remove = True
-    prev_frame = []
-    s=-freq
-    t=[]
-    count=0
-    key_actions = []
-    imageList = []
-
-    while True:
-        # read frame
-        if not canceled(title):
-            ret, frame = cap.read()
-            s+=freq
-
-            # check if frame is empty
-            if not ret:
-                t, prev_frame, imageList = save_image(t, s, prev_frame, imageList)
-                break
-
-            frame = rescale_frame(frame)
-            # display frame
-            # cv2.imshow('frame', frame)
-
-            if remove:
-                shape = frame.shape
-                remove = False
-                prev_frame = frame
-
-            isSF = isSameFrame(frame,prev_frame,s, intensity_threshold, sensitivity, freq)
-
-            if not isSF:
-                t, prev_frame, imageList = save_image(t, s, prev_frame, imageList)
-                key_actions.append([s, "RIGHT"])
-
-            prev_frame = frame
-                        
-            count += freq*fps # i.e.this advances freq seconds
-            cap.set(1, count)
-
-            if cv2.waitKey(30)&0xFF == ord('q'):
-                break
-        else:
-            break
-
-    # release VideoCapture
-    cap.release()
-    cv2.destroyAllWindows()
-
-    # creating pdf
-    if not canceled(title):
-        pdf_gen(imageList, title)
-    else:
-        return
-
-    # keyboard actions
-    if not canceled(title):
-        with open(title+"/keyboard.json", 'w') as f:
-            json.dump(key_actions, f)
-    else:
-        return
-
-    #metadata
-    if not canceled(title):
-        with open(title+"/metadata", 'w') as f:
-            json.dump({"width":shape[1],"height":shape[0]}, f)
-    else:
-        return
-
-    #mouse
-    if not canceled(title):
-        mouse(s, title)
-
-def mouse(max_time, title):
-    mouse_actions = []
-    i = 0
-    while i < max_time:
-        i = i + 0.1
-        mouse_actions.append([i, [0, 0]])
-    with open(title+"/mouse.json", 'w') as f:
-        json.dump(mouse_actions, f)
-
-def pdf_gen(imageList, title):
-    imageList[0].save(title+"/slides.pdf",save_all=True,append_images=imageList[1:])
-
-
-def audio(video_id, title, bitrate="20k"):
-
-    video = pafy.new(video_id)
-    bestaudio = video.getbestaudio()
-    file_name = title + "." + bestaudio.extension
-    bestaudio.download(filepath = title+"/"+file_name)
-
-    if not canceled(title):
-        subprocess.run(["ffmpeg", "-y", "-i", title+"/"+file_name, "-b:a", bitrate, title+"/audio.mp3"])
-
+# all folders and zip files will be removed when a user tries to access this conversion tool if those were existing in the server for more than 3 hrs
 def remove_redundant():
     arr = os.listdir('./')
     for name in arr:
-        if int(time.time()) - int(os.path.getmtime(name)) > 10000:
+        if int(time.time()) - int(os.path.getmtime(name)) > 10800:
             try:
                 foldername = int(name)
                 rmfiles(name)
@@ -241,7 +49,6 @@ def index(request):
                 subprocess.run(["mkdir", title])
                 write_cancel(title, 'False')
 
-                # set video url, extract video information
                 if form.cleaned_data.get('link'):
 
                     ydl = youtube_dl.YoutubeDL({})
@@ -252,6 +59,7 @@ def index(request):
                     # get video formats available
                     formats = info_dict.get('formats',None)
 
+                    # chosing a format with upper bound of 480p
                     max_px = '000p'
                     for f in formats:
                         px = f.get('format_note',None)
